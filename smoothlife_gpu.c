@@ -4,6 +4,20 @@
 
 #include <raylib.h>
 
+#if defined(WIN32) || defined(_WIN32)
+// To run the application with the external GPU, https://stackoverflow.com/a/39047129/2073225
+__declspec(dllexport) int64_t NvOptimusEnablement = 1;
+__declspec(dllexport) int32_t AmdPowerXpressRequestHighPerformance = 1;
+#endif
+
+
+/* Change Log:
+ * >> Initial
+ *  185 FPS w/ NVIDIA GTX 960M
+ *
+*/
+
+
 float rand_float(void)
 {
     return (float)rand()/(float)RAND_MAX;
@@ -19,7 +33,6 @@ int main(void)
     float texture_height = screen_height*scalar;
 
     InitWindow(screen_width, screen_height, "SmoothLife");
-    SetTargetFPS(60);
 
     // Image image = GenImagePerlinNoise(texture_width, texture_height, 0, 0, 5.0f);
     // Image image = GenImageWhiteNoise(texture_width, texture_height, 0.9f);
@@ -48,6 +61,7 @@ int main(void)
     int resolution_loc = GetShaderLocation(shader, "resolution");
     SetShaderValue(shader, resolution_loc, &resolution, SHADER_UNIFORM_VEC2);
 
+    char str[256];
     size_t i = 0;
     while (!WindowShouldClose()) {
         BeginTextureMode(state[1 - i]);
@@ -57,13 +71,16 @@ int main(void)
             EndShaderMode();
         EndTextureMode();
 
-        i = 1 - i;
-
         BeginDrawing();
             ClearBackground(BLACK);
-            DrawTextureEx(state[i].texture, CLITERAL(Vector2){0}, 0, 1/scalar, WHITE);
+            DrawTextureEx(state[1 - i].texture, CLITERAL(Vector2){0}, 0, 1/scalar, WHITE);
             // DrawTexture(state[i].texture, 0, 0, WHITE);
+
+            sprintf_s(str, sizeof(str), "%4i FPS | %.3f ms", GetFPS(), 1000.0f / (float)GetFPS());
+			DrawText(str, 10, 10, 24, RED);
         EndDrawing();
+
+        i = 1 - i;
     }
 
     CloseWindow();
