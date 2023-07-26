@@ -9,6 +9,13 @@ $ ./build.sh
 $ ./main
 ```
 
+or
+```console
+cmake --preset Base
+cmake --build ./build/Base
+./build/Base-Binaries/SmoothLifeGPU
+```
+
 ## References
 
 - https://arxiv.org/abs/1111.1567
