@@ -18,6 +18,10 @@ __declspec(dllexport) int32_t AmdPowerXpressRequestHighPerformance = 1;
  *>> First pass (5.0 ms, 200 FPS)
  * Removed unnecessary ClearBackgrounds (each pixel will be set to something anyway) (did not effect the FPS tho :/)
  * Changed RenderTextures' format to Grayscale (should reduce texture bandwidth by 4)
+ *>> First pass on shader (2.9 ms, 345 FPS)
+ * Removed extra texture lookups on each branch (gpu did not optimize..) (5.0 ms -> 2.95 ms :pog:)
+ * Refactored & reformatted the shader (somehow 2.95 ms -> 2.90 ms)
+ *
 */
 
 
@@ -74,16 +78,23 @@ int main(void)
 
     InitWindow(screen_width, screen_height, "SmoothLife");
 
+    Shader shader = LoadShader(NULL, "./smoothlife.fs");
+    if (shader.id == rlGetShaderIdDefault())
+        return 1;
+
+    Vector2 resolution = {texture_width, texture_height};
+    int resolution_loc = GetShaderLocation(shader, "resolution");
+    SetShaderValue(shader, resolution_loc, &resolution, SHADER_UNIFORM_VEC2);
+
     // Image image = GenImagePerlinNoise(texture_width, texture_height, 0, 0, 5.0f);
     // Image image = GenImageWhiteNoise(texture_width, texture_height, 0.9f);
     // Image image = GenImageCellular(texture_width, texture_height, texture_height/6);
     Image image = GenImageColor(texture_width, texture_height, BLACK);
-    for (int y = 0; y < texture_height*3/4; ++y) {
-        for (int x = 0; x < texture_width*3/4; ++x) {
-            uint8_t v = rand_uint8();
-            Color color = { v, v, v, v };
-            ImageDrawPixel(&image, x, y, color);
-        }
+    for (int y = 0; y < texture_height * 3/4; ++y)
+    for (int x = 0; x < texture_width  * 3/4; ++x) {
+        uint8_t v = rand_uint8() > 180 ? 255 : 0;
+        Color color = { v, v, v, 255 };
+        ImageDrawPixel(&image, x, y, color);
     }
 	ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE);
 
@@ -98,23 +109,24 @@ int main(void)
     SetTextureWrap(state[1].texture, TEXTURE_WRAP_REPEAT);
     SetTextureFilter(state[1].texture, TEXTURE_FILTER_BILINEAR);
 
-    Shader shader = LoadShader(NULL, "./smoothlife.fs");
-    Vector2 resolution = {texture_width, texture_height};
-    int resolution_loc = GetShaderLocation(shader, "resolution");
-    SetShaderValue(shader, resolution_loc, &resolution, SHADER_UNIFORM_VEC2);
-
     char str[256];
     size_t i = 0;
     while (!WindowShouldClose()) {
         BeginTextureMode(state[1 - i]);
             BeginShaderMode(shader);
-                DrawTexture(state[i].texture, 0, 0, WHITE);
+				DrawTexture(state[i].texture, 0, 0, WHITE);
             EndShaderMode();
         EndTextureMode();
 
         BeginDrawing();
-            DrawTextureEx(state[1 - i].texture, CLITERAL(Vector2){0}, 0, 1/scalar, WHITE);
-            // DrawTexture(state[i].texture, 0, 0, WHITE);
+#if 1
+            DrawTextureEx(state[1 - i].texture, CLITERAL(Vector2){0}, 0, 1 / scalar, WHITE);
+#else // debug view
+            DrawTextureEx(state[0].texture, CLITERAL(Vector2){0.0f * screen_width}, 0, 0.5f / scalar, WHITE);
+            DrawTextureEx(state[1].texture, CLITERAL(Vector2){0.5f * screen_width}, 0, 0.5f / scalar, WHITE);
+			DrawText("was src", (i == 0 ? 1 : 3) * screen_width / 4, 0.5f * screen_height, 24, RED);
+			DrawText("was dst", (i == 0 ? 3 : 1) * screen_width / 4, 0.5f * screen_height, 24, RED);
+#endif
 
             sprintf_s(str, sizeof(str), "%4i FPS | %.3f ms", GetFPS(), 1000.0f / (float)GetFPS());
 			DrawText(str, 10, 10, 24, RED);

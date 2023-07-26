@@ -1,9 +1,5 @@
 #version 330
 
-// Input vertex attributes (from vertex shader)
-in vec2 fragTexCoord;
-in vec4 fragColor;
-
 // Input uniform values
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
@@ -13,7 +9,14 @@ out vec4 finalColor;
 
 uniform vec2 resolution;
 
-float ra = 21;
+// o = outer, i = inner
+float ro = 21;
+float ri = ro/3.0;
+
+#define PI 3.14159265359
+// Area = πr^2
+float ai = PI*ri*ri;
+float ao = PI*ro*ro - ai; // actually the area inbetween the ro and ri
 
 #if 1
 // Stolen from https://www.shadertoy.com/view/XtdSDn
@@ -54,48 +57,36 @@ float s(float n, float m)
     return sigma_n(n, sigma_m(b1, d1, m), sigma_m(b2, d2, m));
 }
 
-float grid(float x, float y)
+float grid(vec2 pos)
 {
-    float tx = x/resolution.x;
-    float ty = y/resolution.y;
-    vec4 t = texture(texture0, vec2(tx, ty));
-    return max(max(t.x, t.y), t.z);
+    return texture(texture0, pos / resolution).r;
 }
-
-// A = πr^2
-
-#define PI 3.14159265359
 
 void main()
 {
-#if 1
-    float cx = fragTexCoord.x*resolution.x;
-    float cy = (1 - fragTexCoord.y)*resolution.y;
-    float ri = ra/3.0;
-    float m = 0;
-    float M = PI*ri*ri;
-    float n = 0;
-    float N = PI*ra*ra - M;
+    vec2 center = gl_FragCoord.xy;
+    float so = 0;
+    float si = 0;
+    float ro2 = ro*ro;
+    float ri2 = ri*ri;
 
-    for (float dy = -ra; dy <= ra; dy += 1.0) {
-        for (float dx = -ra; dx <= ra; dx += 1.0) {
-            float x = cx + dx;
-            float y = cy + dy;
-            if (dx*dx + dy*dy <= ri*ri) {
-                m += grid(x, y);
-            } else if (dx*dx + dy*dy <= ra*ra) {
-                n += grid(x, y);
-            }
-        }
+    for (float dy = -ro; dy <= ro; ++dy)
+    for (float dx = -ro; dx <= ro; ++dx) {
+        vec2 offset = vec2(dx, dy);
+        float len2 = dot(offset, offset);
+
+        vec2 pos = center + offset;
+        float val = grid(pos);
+
+        if(len2 <= ro2) so += val;
+        if(len2 <= ri2) si += val;
     }
-    m /= M;
-    n /= N;
-    float q = s(n, m);
-    float diff = 2.0*q - 1.0;
-    float v = clamp(grid(cx, cy) + dt*diff, 0.0, 1.0);
-#endif
+    so -= si; // it is actually the sum between ro and ri
+    so /= ao;
+    si /= ai;
+    float q = s(so, si);
+    float diff = q * 2 - 1;
+    float v = grid(center) + dt * diff;
 
     finalColor = vec4(v, v, v, 1);
-
-    // finalColor = texture(texture0, vec2(fragTexCoord.x, -fragTexCoord.y));
 }
