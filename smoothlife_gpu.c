@@ -21,6 +21,10 @@ __declspec(dllexport) int32_t AmdPowerXpressRequestHighPerformance = 1;
  *>> First pass on shader (2.9 ms, 345 FPS)
  * Removed extra texture lookups on each branch (gpu did not optimize..) (5.0 ms -> 2.95 ms :pog:)
  * Refactored & reformatted the shader (somehow 2.95 ms -> 2.90 ms)
+ *>> Using glsl 400 (1.4 ms, 714 FPS)
+ * Switched to textureGather, requires glsl 400 (should reduce texture bandwidth by 4) (2.9 ms -> 1.4 ms :pog:)
+ * The good news is when I disabled the simulation it was still 1.4 ms :D Maybe the workload is too small to make an
+ *  impact somehow, not sure. But I tried to run it on full scale (1600x900) and it took 11.8 ms, success :)
  *
 */
 
@@ -72,7 +76,7 @@ int main(void)
     float factor = 100;
     float screen_width = 16*factor;
     float screen_height = 9*factor;
-    float scalar = 0.2;
+    float scalar = 1;
     float texture_width = screen_width*scalar;
     float texture_height = screen_height*scalar;
 

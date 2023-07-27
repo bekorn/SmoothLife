@@ -1,4 +1,4 @@
-#version 330
+#version 400
 
 // Input uniform values
 uniform sampler2D texture0;
@@ -10,29 +10,29 @@ out vec4 finalColor;
 uniform vec2 resolution;
 
 // o = outer, i = inner
-float ro = 21;
-float ri = ro/3.0;
+const float ro = 21;
+const float ri = ro/3.0;
 
 #define PI 3.14159265359
 // Area = πr^2
-float ai = PI*ri*ri;
-float ao = PI*ro*ro - ai; // actually the area inbetween the ro and ri
+const float ai = PI*ri*ri;
+const float ao = PI*ro*ro - ai; // actually the area inbetween the ro and ri
 
 #if 1
 // Stolen from https://www.shadertoy.com/view/XtdSDn
-float b1 = 0.257;
-float b2 = 0.336;
-float d1 = 0.365;
-float d2 = 0.549;
-float alpha_n = 0.028;
-float alpha_m = 0.147;
+const float b1 = 0.257;
+const float b2 = 0.336;
+const float d1 = 0.365;
+const float d2 = 0.549;
+const float alpha_n = 0.028;
+const float alpha_m = 0.147;
 #else
-float b1 = 0.278;
-float b2 = 0.365;
-float d1 = 0.267;
-float d2 = 0.445;
-float alpha_n = 0.028;
-float alpha_m = 0.147;
+const float b1 = 0.278;
+const float b2 = 0.365;
+const float d1 = 0.267;
+const float d2 = 0.445;
+const float alpha_n = 0.028;
+const float alpha_m = 0.147;
 #endif
 
 float dt = 0.05;
@@ -59,27 +59,44 @@ float s(float n, float m)
 
 float grid(vec2 pos)
 {
-    return texture(texture0, pos / resolution).r;
+    return texelFetch(texture0, ivec2(pos), 0).r;
+}
+
+mat2x2 grid4(vec2 pos)
+{
+    // textureGather -> vec4( x0y1, x1y1, x1y0, x0y0 )
+    // mat2x2( x0y0, x0y1, x1y0, x1y1 ) for [x][y]
+    return mat2x2(textureGather(texture0, (pos + 0.5) / resolution, 0).wxzy);
 }
 
 void main()
 {
     vec2 center = gl_FragCoord.xy;
+    const float ro2 = ro*ro;
+    const float ri2 = ri*ri;
+
     float so = 0;
     float si = 0;
-    float ro2 = ro*ro;
-    float ri2 = ri*ri;
-
-    for (float dy = -ro; dy <= ro; ++dy)
-    for (float dx = -ro; dx <= ro; ++dx) {
+    for (float dx = -ro; dx <= ro; dx += 2)
+    for (float dy = -ro; dy <= ro; dy += 2) {
         vec2 offset = vec2(dx, dy);
-        float len2 = dot(offset, offset);
+
+/* This strategy does not reduce time, even increases it sometimes */
+//        vec2 center_of2x2 = offset + 1;
+//        vec2 corner_closer_to_origin = center_of2x2 - sign(center_of2x2);
+//        if (dot(corner_closer_to_origin, corner_closer_to_origin) > ro2) continue;
 
         vec2 pos = center + offset;
-        float val = grid(pos);
+        mat2x2 texels2x2 = grid4(pos);
 
-        if(len2 <= ro2) so += val;
-        if(len2 <= ri2) si += val;
+        for (int subx = 0; subx <= 1; subx += 1)
+        for (int suby = 0; suby <= 1; suby += 1) {
+            float val = texels2x2[subx][suby];
+            vec2 suboffset = offset + vec2(subx, suby);
+            float len2 = dot(suboffset, suboffset);
+            if(len2 <= ro2) so += val;
+            if(len2 <= ri2) si += val;
+        }
     }
     so -= si; // it is actually the sum between ro and ri
     so /= ao;
