@@ -9,16 +9,22 @@ out vec4 finalColor;
 
 uniform vec2 resolution;
 
+#define PARAM_SET 2 // 0 = from the paper, 1 = from stackoverflow, 2 = inspired by the constants of the universe
 // o = outer, i = inner
+
+#if PARAM_SET == 0
 const float ro = 21;
 const float ri = ro/3.0;
+const float b1 = 0.278;
+const float b2 = 0.365;
+const float d1 = 0.267;
+const float d2 = 0.445;
+const float alpha_n = 0.028;
+const float alpha_m = 0.147;
 
-#define PI 3.14159265359
-// Area = πr^2
-const float ai = PI*ri*ri;
-const float ao = PI*ro*ro - ai; // actually the area inbetween the ro and ri
-
-#if 1
+#elif PARAM_SET == 1
+const float ro = 21;
+const float ri = ro/3.0;
 // Stolen from https://www.shadertoy.com/view/XtdSDn
 const float b1 = 0.257;
 const float b2 = 0.336;
@@ -26,14 +32,23 @@ const float d1 = 0.365;
 const float d2 = 0.549;
 const float alpha_n = 0.028;
 const float alpha_m = 0.147;
-#else
-const float b1 = 0.278;
-const float b2 = 0.365;
-const float d1 = 0.267;
-const float d2 = 0.445;
-const float alpha_n = 0.028;
-const float alpha_m = 0.147;
+
+#elif PARAM_SET == 2
+const float ro = 12;
+const float ri = ro/1.5;
+const float b1 = 0.3;
+const float b2 = 0.360;
+const float d1 = 0.420;
+const float d2 = 0.69;
+const float alpha_n = 0.049;
+const float alpha_m = 0.121;
+
 #endif
+
+#define PI 3.14159265359
+// Area = πr^2
+const float ai = PI*ri*ri;
+const float ao = PI*ro*ro - ai; // actually the area inbetween the ro and ri
 
 float dt = 0.05;
 

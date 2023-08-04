@@ -9,10 +9,16 @@ add_executable(SmoothLifeGPU smoothlife_gpu.c)
 find_package(raylib CONFIG REQUIRED)
 target_link_libraries(SmoothLifeGPU PRIVATE raylib)
 
-# copy shader
-add_custom_command(
-    TARGET SmoothLifeGPU POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_hardlink
-    ${CMAKE_CURRENT_SOURCE_DIR}/smoothlife.fs
-    $<TARGET_FILE_DIR:SmoothLifeGPU>/smoothlife.fs
+# copy shaders
+set(shaders
+    smoothlife.fs
+    brush.fs
 )
+foreach (shader IN LISTS shaders)
+    add_custom_command(
+        TARGET SmoothLifeGPU POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_hardlink
+        ${CMAKE_CURRENT_SOURCE_DIR}/${shader}
+        $<TARGET_FILE_DIR:SmoothLifeGPU>/${shader}
+    )
+endforeach ()
